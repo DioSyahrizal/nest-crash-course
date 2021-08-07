@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
-  NotFoundException,
+  HttpException,
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import {
@@ -13,11 +15,13 @@ import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiQuery,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
 import { CreateUserDto } from './dto/createuser.dto';
 import { ResponseCreateUserDTO } from './dto/createuser.response.dto';
+import { DeleteUserDTO } from './dto/deleteuser.response.dto';
 import { User } from './entities/user.entitiy';
 import { UsersService } from './users.service';
 
@@ -26,27 +30,53 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  @ApiCreatedResponse({ type: ResponseCreateUserDTO })
   @ApiQuery({ name: 'name', required: false })
   @Get()
-  getUser(@Query('name') name?: string): User[] {
-    return this.usersService.findAll(name);
+  async getUser(@Query('name') name?: string): Promise<User[]> {
+    return await this.usersService.findAll(name);
   }
 
   @ApiCreatedResponse({ type: ResponseCreateUserDTO })
   @ApiNotFoundResponse({ status: 404, description: 'Not Found' })
   @Get(':id')
-  getUserById(@Param('id', ParseIntPipe) id: number): User {
-    const user = this.usersService.findById(id);
-    if (!user) {
-      throw new NotFoundException();
-    }
+  async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User> {
+    const user = await this.usersService.findById(id);
+
     return user;
   }
 
   @ApiCreatedResponse({ type: ResponseCreateUserDTO })
   @ApiBadRequestResponse()
   @Post()
-  createUser(@Body() body: CreateUserDto): User {
-    return this.usersService.createUser(body);
+  async createUser(@Body() body: CreateUserDto): Promise<User> {
+    return await this.usersService.createUser(body);
+  }
+
+  @ApiCreatedResponse({ type: ResponseCreateUserDTO })
+  @ApiBadRequestResponse()
+  @Put(':id')
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CreateUserDto,
+  ): Promise<User> {
+    const result = await this.usersService.updateUser(id, body);
+    return result;
+  }
+
+  @ApiResponse({
+    status: 201,
+    description: 'Return status ok',
+    type: DeleteUserDTO,
+  })
+  @ApiNotFoundResponse({ status: 404, description: 'Not Found' })
+  @Delete(':id')
+  async deleteUser(@Param('id', ParseIntPipe) id: number): Promise<any> {
+    const user = await this.usersService.deleteUser(id);
+    if (user) {
+      return { status: 'ok' };
+    } else {
+      throw new HttpException({ error: 'User not found' }, 404);
+    }
   }
 }
