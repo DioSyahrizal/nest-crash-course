@@ -1,7 +1,22 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto } from './dto/createuser.dto';
 import { ResponseCreateUserDTO } from './dto/createuser.response.dto';
 import { User } from './entities/user.entitiy';
 import { UsersService } from './users.service';
@@ -10,17 +25,26 @@ import { UsersService } from './users.service';
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
-  @Get()
-  getUser(): User[] {
-    return this.usersService.findAll();
-  }
 
-  @Get(':id')
-  getUserById(@Param('id') id: string): User {
-    return this.usersService.findById(Number(id));
+  @ApiQuery({ name: 'name', required: false })
+  @Get()
+  getUser(@Query('name') name?: string): User[] {
+    return this.usersService.findAll(name);
   }
 
   @ApiCreatedResponse({ type: ResponseCreateUserDTO })
+  @ApiNotFoundResponse({ status: 404, description: 'Not Found' })
+  @Get(':id')
+  getUserById(@Param('id', ParseIntPipe) id: number): User {
+    const user = this.usersService.findById(id);
+    if (!user) {
+      throw new NotFoundException();
+    }
+    return user;
+  }
+
+  @ApiCreatedResponse({ type: ResponseCreateUserDTO })
+  @ApiBadRequestResponse()
   @Post()
   createUser(@Body() body: CreateUserDto): User {
     return this.usersService.createUser(body);
